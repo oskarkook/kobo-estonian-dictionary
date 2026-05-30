@@ -4,11 +4,10 @@
 // Steps:
 //   1. Walk every saved /word/details JSON under <cache>/ekilex/words, filter
 //      to Estonian (lang:"est"), and emit a single dictgen .df file with one
-//      entry per word. Collect author names from edit metadata in the same
-//      pass.
+//      entry per word.
 //   2. Run dictgen to produce <cache>/dicthtml-et.zip.
-//   3. Render the LICENSE (CC BY 4.0 attribution + derived authors list +
-//      modifications description) and bundle it into the zip.
+//   3. Render the LICENSE (CC BY 4.0 attribution + modifications description)
+//      and bundle it into the zip.
 //
 // Usage:
 //   bun run build.ts
@@ -24,15 +23,6 @@ const WORDS_DIR = `${CACHE_DIR}/ekilex/words`;
 const DF_FILE = `${CACHE_DIR}/estonian.df`;
 const ZIP_FILE = `${CACHE_DIR}/dicthtml-et.zip`;
 const LICENSE_FILE = `${CACHE_DIR}/LICENSE`;
-
-// Non-human accounts that appear in createdBy/modifiedBy and should not be
-// listed as authors. Checked after paren-stripping. Loader bots use the
-// pattern "Ekilex <code>-laadur"; a generic "Laadur" account has by far the
-// most edits in the dataset.
-const BOT_NAMES = new Set(['Laadur', 'Kollide kolija']);
-function isBotAccount(name: string): boolean {
-  return BOT_NAMES.has(name) || /^Ekilex /.test(name);
-}
 
 interface Form {
   value?: string;
@@ -164,62 +154,15 @@ function renderEntry(data: WordDetails): string | null {
   return lines.join('\n') + '\n\n';
 }
 
-// Recursively collect every createdBy / modifiedBy string in a parsed JSON
-// tree. Names live on definitions, usages, freeforms, notes, and possibly
-// other nested objects; walking generically avoids missing any field.
-function collectAuthorsFrom(node: unknown, out: Set<string>): void {
-  if (node === null || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    for (const item of node) collectAuthorsFrom(item, out);
-    return;
-  }
-  for (const [key, value] of Object.entries(node)) {
-    if ((key === 'createdBy' || key === 'modifiedBy') && typeof value === 'string') {
-      const cleaned = value.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-      if (cleaned && !isBotAccount(cleaned)) out.add(cleaned);
-    } else {
-      collectAuthorsFrom(value, out);
-    }
-  }
-}
-
-function formatAuthorsList(names: Set<string>): string {
-  // EKI's citation convention is "Surname, Firstname" with entries joined by
-  // semicolons. Treat the last whitespace-separated token as the surname.
-  const formatted = [...names]
-    .map((name) => {
-      const parts = name.split(/\s+/);
-      if (parts.length < 2) return { surname: name, formatted: name };
-      const surname = parts[parts.length - 1]!;
-      const given = parts.slice(0, -1).join(' ');
-      return { surname, formatted: `${surname}, ${given}` };
-    })
-    .sort((a, b) => a.surname.localeCompare(b.surname, 'et'));
-  return formatted.map((f) => f.formatted).join('; ');
-}
-
-function renderLicense(authors: Set<string>): string {
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2, '0');
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const yyyy = today.getFullYear();
-  const buildDate = `${dd}.${mm}.${yyyy}`;
-  const authorsList = formatAuthorsList(authors);
-
+function renderLicense(): string {
   return `This dictionary is derived from the "EKI ühendsõnastik 2026" word
-collection (sõnakogu) in Ekilex (https://ekilex.ee/), the lexical database
-operated by the Institute of the Estonian Language (Eesti Keele Instituut).
+collection (sõnakogu), exported through Ekilex (https://ekilex.ee/), the
+lexical database operated by Eesti Keele Instituut.
 
 Citation
 --------
-EKI ühendsõnastik 2026. [The EKI Combined Dictionary, CombiDic]
-Koostanud ja toimetanud ${authorsList}.
-Eesti Keele Instituut. Sõnaveeb 2026. https://sonaveeb.ee (${buildDate})
-
-The authors list above is derived from edit metadata in the data
-extracted from Ekilex via its public API on the date shown. For the
-canonical credits maintained by EKI, see
-https://sonaveeb.ee/collections.
+EKI ühendsõnastik 2026. Eesti Keele Instituut, Ekilex 2026.
+https://ekilex.ee
 
 License
 -------
@@ -231,23 +174,21 @@ Creative Commons Attribution 4.0 International License (CC BY 4.0).
 Modifications
 -------------
 This dictionary was produced from the "EKI ühendsõnastik 2026" sõnakogu
-(dataset code: eki) via the Ekilex public API, filtered/restructured for usage
-in Kobo e-readers, and reformatted into HTML for Kobo dictionary format.
+(dataset code: eki), exported via the Ekilex API, filtered/restructured for
+usage in Kobo e-readers, and reformatted into HTML for Kobo dictionary format.
 
 Endorsement
 -----------
-The Institute of the Estonian Language does not endorse this derivative
-work.
+Eesti Keele Instituut does not endorse this derivative work.
 `;
 }
 
-async function buildDictfile(): Promise<Set<string>> {
+async function buildDictfile(): Promise<void> {
   // Bun.file().writer() doesn't truncate, so an existing file's tail can
   // survive if the new content is shorter. Explicitly empty it first.
   await Bun.write(DF_FILE, '');
   const writer = Bun.file(DF_FILE).writer();
   const shards = (await readdir(WORDS_DIR)).sort();
-  const authors = new Set<string>();
 
   let processed = 0;
   let written = 0;
@@ -263,7 +204,6 @@ async function buildDictfile(): Promise<Set<string>> {
       const path = join(WORDS_DIR, shard, fname);
       try {
         const data = (await Bun.file(path).json()) as WordDetails;
-        collectAuthorsFrom(data, authors);
         if (data.word?.lang !== 'est') {
           skippedLang++;
           continue;
@@ -284,8 +224,7 @@ async function buildDictfile(): Promise<Set<string>> {
         console.log(
           `[${processed.toLocaleString()}] written=${written} ` +
             `skipLang=${skippedLang} skipEmpty=${skippedEmpty} ` +
-            `authors=${authors.size} errors=${errors} ` +
-            `· ${(processed / elapsed).toFixed(0)}/s`,
+            `errors=${errors} · ${(processed / elapsed).toFixed(0)}/s`,
         );
       }
     }
@@ -294,11 +233,9 @@ async function buildDictfile(): Promise<Set<string>> {
   await writer.end();
   console.log(
     `Dictfile done. processed=${processed} written=${written} ` +
-      `skipLang=${skippedLang} skipEmpty=${skippedEmpty} ` +
-      `authors=${authors.size} errors=${errors}`,
+      `skipLang=${skippedLang} skipEmpty=${skippedEmpty} errors=${errors}`,
   );
   console.log(`Wrote ${DF_FILE}`);
-  return authors;
 }
 
 async function runDictgen(): Promise<void> {
@@ -313,8 +250,8 @@ async function runDictgen(): Promise<void> {
   }
 }
 
-async function bundleLicense(authors: Set<string>): Promise<void> {
-  const content = renderLicense(authors);
+async function bundleLicense(): Promise<void> {
+  const content = renderLicense();
   await Bun.write(LICENSE_FILE, content);
   // -j drops the directory prefix so the entry inside the zip is just
   // "LICENSE", not the full path.
@@ -324,13 +261,13 @@ async function bundleLicense(authors: Set<string>): Promise<void> {
     process.exit(1);
   }
   await unlink(LICENSE_FILE);
-  console.log(`Bundled LICENSE (${authors.size} authors) into ${ZIP_FILE}`);
+  console.log(`Bundled LICENSE into ${ZIP_FILE}`);
 }
 
 async function main() {
-  const authors = await buildDictfile();
+  await buildDictfile();
   await runDictgen();
-  await bundleLicense(authors);
+  await bundleLicense();
 }
 
 main().catch((e) => {
