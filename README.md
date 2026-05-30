@@ -1,6 +1,6 @@
-# Estonian Kobo dictionary (Eestikeelne Kobo sõnastik)
+# Estonian Kobo dictionary (eestikeelne Kobo sõnastik)
 
-Tools for building a Kobo e-reader dictionary from the [Ekilex](https://ekilex.ee/) (Estonian Language Institute lexical database) `eki` dataset.
+Tools for building a Kobo e-reader dictionary from the [Ekilex](https://ekilex.ee/) `eki` dataset.
 
 ## Install prebuilt dictionary on a Kobo
 
@@ -15,7 +15,7 @@ Tools for building a Kobo e-reader dictionary from the [Ekilex](https://ekilex.e
 **Prerequisites:**
 
 - [Bun](https://bun.sh/) 1.3+.
-- An Ekilex API key. Get one from the [Ekilex](https://ekilex.ee).
+- An Ekilex API key - get one from [Ekilex](https://ekilex.ee).
 - `dictgen` - download from [pgaskin/dictutil](https://github.com/pgaskin/dictutil/releases).
 - `zip`
 
