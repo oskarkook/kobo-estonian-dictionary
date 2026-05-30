@@ -2,26 +2,28 @@
 // Build the Kobo dictionary zip from scraped Ekilex data.
 //
 // Steps:
-//   1. Walk every saved /word/details JSON under data/ekilex/words, filter to
-//      Estonian (lang:"est"), and emit a single dictgen .df file with one
+//   1. Walk every saved /word/details JSON under <cache>/ekilex/words, filter
+//      to Estonian (lang:"est"), and emit a single dictgen .df file with one
 //      entry per word. Collect author names from edit metadata in the same
 //      pass.
-//   2. Run dictgen to produce data/dicthtml-et.zip.
+//   2. Run dictgen to produce <cache>/dicthtml-et.zip.
 //   3. Render the LICENSE (CC BY 4.0 attribution + derived authors list +
 //      modifications description) and bundle it into the zip.
 //
 // Usage:
 //   bun run build.ts
 //
-// Output: data/dicthtml-et.zip
+// Output: ~/.cache/kobo-estonian-dictionary/dicthtml-et.zip
 
 import { readdir, unlink } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const WORDS_DIR = 'data/ekilex/words';
-const DF_FILE = 'data/estonian.df';
-const ZIP_FILE = 'data/dicthtml-et.zip';
-const LICENSE_FILE = 'data/LICENSE';
+const CACHE_DIR = `${homedir()}/.cache/kobo-estonian-dictionary`;
+const WORDS_DIR = `${CACHE_DIR}/ekilex/words`;
+const DF_FILE = `${CACHE_DIR}/estonian.df`;
+const ZIP_FILE = `${CACHE_DIR}/dicthtml-et.zip`;
+const LICENSE_FILE = `${CACHE_DIR}/LICENSE`;
 
 // Non-human accounts that appear in createdBy/modifiedBy and should not be
 // listed as authors. Checked after paren-stripping. Loader bots use the
@@ -317,7 +319,7 @@ async function bundleLicense(authors: Set<string>): Promise<void> {
   const content = renderLicense(authors);
   await Bun.write(LICENSE_FILE, content);
   // -j drops the directory prefix so the entry inside the zip is just
-  // "LICENSE", not "data/LICENSE".
+  // "LICENSE", not the full path.
   const result = await Bun.$`zip -j ${ZIP_FILE} ${LICENSE_FILE}`.nothrow();
   if (result.exitCode !== 0) {
     console.error('zip failed when bundling LICENSE');

@@ -11,12 +11,13 @@
 // Usage:
 //   EKILEX_API_KEY=<32-hex-key> bun run scripts/scrape-ekilex.ts
 //
-// Output layout (under DATA_DIR):
+// Output layout (under ~/.cache/kobo-estonian-dictionary/ekilex):
 //   public_word_eki.json   - raw response of /public_word/eki
 //   words/<shard>/<id>.json - per-word /word/details/<id>/eki response
 //   failed.jsonl           - append-only log of failed ids with reason
 
 import { mkdir, appendFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname } from 'node:path';
 
 const API_KEY = process.env.EKILEX_API_KEY;
@@ -26,7 +27,7 @@ if (!API_KEY) {
 }
 
 const BASE = 'https://ekilex.ee/api';
-const DATA_DIR = 'data/ekilex';
+const DATA_DIR = `${homedir()}/.cache/kobo-estonian-dictionary/ekilex`;
 const INDEX_FILE = `${DATA_DIR}/public_word_eki.json`;
 const WORDS_DIR = `${DATA_DIR}/words`;
 const FAILED_LOG = `${DATA_DIR}/failed.jsonl`;

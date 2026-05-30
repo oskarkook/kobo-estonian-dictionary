@@ -20,9 +20,10 @@ Tools for building a Kobo e-reader dictionary from the [Ekilex](https://ekilex.e
 ## Build the dictionary
 
 ```sh
-# Scrape Ekilex - writes to ./data/ekilex (requires ~7.5GB of space)
+# Scrape Ekilex (requires ~7.5GB of space)
 EKILEX_API_KEY=<key> bun run scrape-ekilex.ts
-# Build dictfile, run dictgen, and bundle the LICENSE into the zip
-# - writes ./data/estonian.df and ./data/dicthtml-et.zip
+# Build the dictionary
 bun run build.ts
 ```
+
+Artifacts are written under `~/.cache/kobo-estonian-dictionary/`. The final dictionary file will be saved in this folder as `dicthtml-et.zip`.
