@@ -97,18 +97,19 @@ function collectVariants(word: Word, headword: string): string[] {
 }
 
 function renderBody(lexemes: Lexeme[]): string {
-  // Lexemes are senses of the same headword; render their definitions as a
-  // single continuous numbered list so the count doesn't restart per sense.
-  // POS often only lives on the first lexeme; dedupe across all of them.
+  // Lexemes are senses of the same headword; render one numbered <li> per
+  // sense. POS often only lives on the first lexeme; dedupe across all of
+  // them.
   //
   // Filter on wwUnif === true at every level (lexeme, definition, usage) to
   // match the standard Sõnaveeb view. wwLite-only content is the simplified
   // learner view and shouldn't show up in a general dictionary.
   //
-  // Examples (usages) are per-lexeme; we attach them as a nested <ul> under
-  // the last definition of each sense to keep them grouped correctly.
+  // A single sense can carry multiple definition entries; join them with "; "
+  // into one line. Usages attach as a nested <ul> under the combined
+  // definition.
   const posSet = new Set<string>();
-  const senses: Array<{ defs: string[]; examples: string[] }> = [];
+  const senses: Array<{ definition: string; examples: string[] }> = [];
   for (const lx of lexemes) {
     if (lx.wwUnif !== true) continue;
     for (const p of lx.pos ?? []) {
@@ -124,7 +125,7 @@ function renderBody(lexemes: Lexeme[]): string {
       .filter((u) => u.wwUnif === true)
       .map((u) => u.value?.trim())
       .filter((v): v is string => !!v);
-    senses.push({ defs, examples });
+    senses.push({ definition: defs.join('; '), examples });
   }
   if (senses.length === 0) return '';
 
@@ -134,19 +135,16 @@ function renderBody(lexemes: Lexeme[]): string {
   }
   parts.push('<ol>');
   for (const sense of senses) {
-    const lastIdx = sense.defs.length - 1;
-    for (let i = 0; i < sense.defs.length; i++) {
-      parts.push('<li>');
-      parts.push(escapeHtml(sense.defs[i]!));
-      if (i === lastIdx && sense.examples.length > 0) {
-        parts.push('<ul>');
-        for (const ex of sense.examples) {
-          parts.push(`<li><i>${escapeHtml(ex)}</i></li>`);
-        }
-        parts.push('</ul>');
+    parts.push('<li>');
+    parts.push(escapeHtml(sense.definition));
+    if (sense.examples.length > 0) {
+      parts.push('<ul>');
+      for (const ex of sense.examples) {
+        parts.push(`<li><i>${escapeHtml(ex)}</i></li>`);
       }
-      parts.push('</li>');
+      parts.push('</ul>');
     }
+    parts.push('</li>');
   }
   parts.push('</ol>');
   return parts.join('');
