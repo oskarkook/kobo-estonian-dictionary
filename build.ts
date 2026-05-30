@@ -6,8 +6,8 @@
 //      to Estonian (lang:"est"), and emit a single dictgen .df file with one
 //      entry per word.
 //   2. Run dictgen to produce <cache>/dicthtml-et.zip.
-//   3. Render the LICENSE (CC BY 4.0 attribution + modifications description)
-//      and bundle it into the zip.
+//   3. Bundle the LICENSE file (CC BY 4.0 attribution + modifications
+//      description) into the zip.
 //
 // Usage:
 //   bun run build.ts
@@ -22,7 +22,8 @@ const CACHE_DIR = `${homedir()}/.cache/kobo-estonian-dictionary`;
 const WORDS_DIR = `${CACHE_DIR}/ekilex/words`;
 const DF_FILE = `${CACHE_DIR}/estonian.df`;
 const ZIP_FILE = `${CACHE_DIR}/dicthtml-et.zip`;
-const LICENSE_FILE = `${CACHE_DIR}/LICENSE`;
+const LICENSE_SOURCE = join(import.meta.dir, 'dictionary-license.txt');
+const LICENSE_STAGED = `${CACHE_DIR}/LICENSE`;
 
 interface Form {
   value?: string;
@@ -154,35 +155,6 @@ function renderEntry(data: WordDetails): string | null {
   return lines.join('\n') + '\n\n';
 }
 
-function renderLicense(): string {
-  return `This dictionary is derived from the "EKI ühendsõnastik 2026" word
-collection (sõnakogu), exported through Ekilex (https://ekilex.ee/), the
-lexical database operated by Eesti Keele Instituut.
-
-Citation
---------
-EKI ühendsõnastik 2026. Eesti Keele Instituut, Ekilex 2026.
-https://ekilex.ee
-
-License
--------
-The Ekilex content used to build this dictionary is licensed under the
-Creative Commons Attribution 4.0 International License (CC BY 4.0).
-- Human-readable summary: https://creativecommons.org/licenses/by/4.0/
-- Full legal code:        https://creativecommons.org/licenses/by/4.0/legalcode
-
-Modifications
--------------
-This dictionary was produced from the "EKI ühendsõnastik 2026" sõnakogu
-(dataset code: eki), exported via the Ekilex API, filtered/restructured for
-usage in Kobo e-readers, and reformatted into HTML for Kobo dictionary format.
-
-Endorsement
------------
-Eesti Keele Instituut does not endorse this derivative work.
-`;
-}
-
 async function buildDictfile(): Promise<void> {
   // Bun.file().writer() doesn't truncate, so an existing file's tail can
   // survive if the new content is shorter. Explicitly empty it first.
@@ -251,16 +223,15 @@ async function runDictgen(): Promise<void> {
 }
 
 async function bundleLicense(): Promise<void> {
-  const content = renderLicense();
-  await Bun.write(LICENSE_FILE, content);
-  // -j drops the directory prefix so the entry inside the zip is just
-  // "LICENSE", not the full path.
-  const result = await Bun.$`zip -j ${ZIP_FILE} ${LICENSE_FILE}`.nothrow();
+  // Stage under the name "LICENSE" so that's what shows up inside the zip;
+  // `zip -j` takes the entry name from the file on disk.
+  await Bun.write(LICENSE_STAGED, Bun.file(LICENSE_SOURCE));
+  const result = await Bun.$`zip -j ${ZIP_FILE} ${LICENSE_STAGED}`.nothrow();
+  await unlink(LICENSE_STAGED);
   if (result.exitCode !== 0) {
     console.error('zip failed when bundling LICENSE');
     process.exit(1);
   }
-  await unlink(LICENSE_FILE);
   console.log(`Bundled LICENSE into ${ZIP_FILE}`);
 }
 

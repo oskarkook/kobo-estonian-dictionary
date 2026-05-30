@@ -1,0 +1,13 @@
+This dictionary is derived from the "EKI ühendsõnastik 2026" word collection,
+exported through Ekilex (https://ekilex.ee/), filtered/restructured for usage
+in Kobo e-readers, and reformatted into HTML for Kobo dictionary format.
+
+EKI ühendsõnastik 2026. Eesti Keele Instituut, Ekilex 2026.
+https://ekilex.ee
+
+License
+-------
+The Ekilex content used to build this dictionary is licensed under the Creative
+Commons Attribution 4.0 International License (CC BY 4.0).
+- Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+- Full legal code:        https://creativecommons.org/licenses/by/4.0/legalcode
