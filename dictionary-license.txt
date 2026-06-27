@@ -1,6 +1,6 @@
 This dictionary is derived from the "EKI ühendsõnastik 2026" word collection,
-exported through Ekilex (https://ekilex.ee/), filtered/restructured for usage
-in Kobo e-readers, and reformatted into HTML for Kobo dictionary format.
+exported through Ekilex (https://ekilex.ee/), filtered/restructured and
+reformatted into a dictionary format.
 
 EKI ühendsõnastik 2026. Eesti Keele Instituut, Ekilex 2026.
 https://ekilex.ee
